@@ -15,12 +15,20 @@ public interface ServicioRepository extends JpaRepository<Servicio, UUID> {
 
     Optional<Servicio> findByCodigo(String codigo);
 
-    /** Busqueda por texto (nombre o codigo) y categoria, ambos opcionales. */
+    /**
+     * Busqueda por texto (nombre o codigo) y categoria, ambos opcionales.
+     *
+     * Los `cast(... as String)` no son decorativos: en PostgreSQL un parametro
+     * que solo aparece en `:p is null` no tiene contexto para inferir el tipo y
+     * el driver falla con "could not determine data type" o "lower(bytea) does
+     * not exist". H2 lo tolera, por eso no se ve en los tests.
+     */
     @Query("""
             select s from Servicio s
-            where (:busqueda is null or lower(s.nombre) like lower(concat('%', :busqueda, '%'))
-                                    or lower(s.codigo) like lower(concat('%', :busqueda, '%')))
-              and (:categoria is null or s.categoria = :categoria)
+            where (cast(:busqueda as String) is null
+                     or lower(s.nombre) like lower(concat('%', cast(:busqueda as String), '%'))
+                     or lower(s.codigo) like lower(concat('%', cast(:busqueda as String), '%')))
+              and (cast(:categoria as String) is null or s.categoria = :categoria)
               and (:soloActivos = false or s.activo = true)
             order by s.codigo
             """)

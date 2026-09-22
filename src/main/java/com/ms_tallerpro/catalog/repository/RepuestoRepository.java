@@ -17,12 +17,17 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, UUID> {
 
     boolean existsByTallerIdAndCodigo(UUID tallerId, String codigo);
 
+    /**
+     * Los `cast(... as String)` evitan el fallo de inferencia de tipos de
+     * PostgreSQL cuando `busqueda` llega nula (ver ServicioRepository).
+     */
     @Query("""
             select r from Repuesto r
             where r.tallerId = :tallerId
-              and (:busqueda is null or lower(r.nombre) like lower(concat('%', :busqueda, '%'))
-                                    or lower(r.codigo) like lower(concat('%', :busqueda, '%'))
-                                    or lower(r.marca) like lower(concat('%', :busqueda, '%')))
+              and (cast(:busqueda as String) is null
+                     or lower(r.nombre) like lower(concat('%', cast(:busqueda as String), '%'))
+                     or lower(r.codigo) like lower(concat('%', cast(:busqueda as String), '%'))
+                     or lower(r.marca) like lower(concat('%', cast(:busqueda as String), '%')))
               and (:soloBajoStock = false or r.stock <= r.stockMinimo)
               and (:soloActivos = false or r.activo = true)
             order by r.nombre
