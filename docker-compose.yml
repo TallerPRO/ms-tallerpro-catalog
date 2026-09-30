@@ -1,0 +1,53 @@
+# ms-tallerpro-catalog + su PostgreSQL. Requiere la red tallerpro-net
+# (se crea con ../docker-compose.infra.yml).
+#
+#   docker compose up -d --build
+name: tallerpro-catalog
+
+services:
+  ms-tallerpro-catalog:
+    build: .
+    image: tallerpro/ms-tallerpro-catalog:latest
+    container_name: ms-tallerpro-catalog
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: db-catalog
+      DB_PORT: 5432
+      DB_NAME: tallerpro_catalog
+      DB_USER: tallerpro
+      DB_PASSWORD: ${CATALOG_DB_PASSWORD:-tallerpro}
+      TALLERPRO_JWT_ENABLED: ${TALLERPRO_JWT_ENABLED:-false}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-tenant-id}
+      AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID:-api-client-id}
+    depends_on:
+      db-catalog:
+        condition: service_healthy
+    networks:
+      - tallerpro-net
+
+  db-catalog:
+    image: postgres:16-alpine
+    container_name: db-catalog
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tallerpro_catalog
+      POSTGRES_USER: tallerpro
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:-tallerpro}
+    volumes:
+      - db-catalog-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tallerpro -d tallerpro_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tallerpro-net
+
+volumes:
+  db-catalog-data:
+
+networks:
+  tallerpro-net:
+    external: true
